@@ -159,7 +159,7 @@ export default function ResultSheet({ result, onClose }: Props) {
         )}
 
         {/* ── Allergy alerts ── */}
-        {analysis.allergyAlerts.length > 0 && (
+        {(analysis.allergyAlerts?.length ?? 0) > 0 && (
           <div className="mx-4 mb-3 p-3 bg-red-50 border border-red-200 rounded-xl">
             <p className="text-xs font-bold text-red-700 mb-1 flex items-center gap-1">
               <AlertTriangle size={12} /> ALLERGY ALERT — Matches your profile
@@ -171,7 +171,7 @@ export default function ResultSheet({ result, onClose }: Props) {
         )}
 
         {/* ── Flagged ingredients ── */}
-        {analysis.findings.length > 0 ? (
+        {(analysis.findings?.length ?? 0) > 0 ? (
           <div className="px-4 mb-3">
             <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-2">
               Flagged Ingredients ({analysis.findings.length})

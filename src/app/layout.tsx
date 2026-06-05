@@ -5,7 +5,6 @@ export const metadata: Metadata = {
   title: "SafeLens AI",
   description: "Know what you buy. Guard what you love.",
   manifest: "/manifest.json",
-  themeColor: "#10B981",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
@@ -13,6 +12,7 @@ export const metadata: Metadata = {
   },
 };
 
+// 1. Merged Viewport: Combines the theme color with your mobile zoom rules
 export const viewport: Viewport = {
   themeColor: "#10B981",
   width: "device-width",

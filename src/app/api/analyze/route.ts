@@ -39,22 +39,29 @@ export async function POST(request: Request) {
     `;
 
     // Use Gemini 1.5 Flash for the fastest response time
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
     const result = await model.generateContent(prompt);
     
     // Clean the response in case the AI wraps it in markdown blocks
     let aiText = result.response.text().trim();
-    if (aiText.startsWith("```json")) {
-      aiText = aiText.replace(/^```json\n/, "").replace(/\n```$/, "");
-    } else if (aiText.startsWith("```")) {
-      aiText = aiText.replace(/^```\n/, "").replace(/\n```$/, "");
+    
+    // Bulletproof JSON extractor: Finds the first { and last } even if the AI adds weird text
+    const jsonMatch = aiText.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      throw new Error("AI did not return valid JSON");
     }
+    
+    const analysis = JSON.parse(jsonMatch[0]);
 
-    const analysis = JSON.parse(aiText);
+    // AI Safety Net: Force missing arrays to be empty arrays so the UI never crashes
+    if (!analysis.allergyAlerts) analysis.allergyAlerts = [];
+    if (!analysis.findings) analysis.findings = [];
+    if (!analysis.positives) analysis.positives = [];
 
     return NextResponse.json(analysis);
-  } catch (error) {
+  } catch (error: any) {
     console.error("AI Analysis Error:", error);
-    return NextResponse.json({ error: "Failed to analyze ingredients" }, { status: 500 });
+    // Temporarily return the exact error message to the frontend for debugging
+    return NextResponse.json({ error: error?.message || "Unknown server error" }, { status: 500 });
   }
 }

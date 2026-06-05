@@ -222,6 +222,13 @@ export default function AppShell() {
                   body: JSON.stringify({ text, profile: profileForAnalysis }),
                 });
                 const analysis = await aiResponse.json();
+
+                // ADD THIS CRITICAL CHECK:
+                if (!aiResponse.ok || analysis.error) {
+                  alert("Backend Error: " + (analysis.error || "Status " + aiResponse.status));
+                  setLoading(false);
+                  return;
+                }
                 
                 const drugAlerts = checkDrugInteractions(activeProfile?.medications ?? [], text);
                 
