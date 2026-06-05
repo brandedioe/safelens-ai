@@ -49,3 +49,39 @@ export async function upsertProfile(profile: {
   const { error } = await supabase.from("user_profiles").upsert(profile);
   return { error };
 }
+
+// ── Community Products Moat (Phase 3) ────────────────────────
+
+// 1. Check if another user has already scanned this product
+export async function getCommunityProduct(barcode: string) {
+  if (!supabase) return null; // Safe fallback if not configured
+  
+  try {
+    const { data, error } = await supabase
+      .from("products")
+      .select("*")
+      .eq("barcode", barcode)
+      .single();
+      
+    if (error) return null;
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+// 2. Silently save a successful OCR scan so the next user doesn't have to scan it
+export async function saveCommunityProduct(barcode: string, ingredientsText: string) {
+  if (!supabase) return; // Safe fallback if not configured
+  
+  try {
+    await supabase.from("products").upsert({
+      barcode: barcode,
+      name: "Community Scanned Product",
+      ingredients_text: ingredientsText,
+      source: "ocr_scan"
+    }, { onConflict: "barcode" });
+  } catch (error) {
+    console.error("Failed to sync to community database", error);
+  }
+}

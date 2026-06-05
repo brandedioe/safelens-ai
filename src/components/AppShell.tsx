@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Zap, Users, Clock, Camera, AlertCircle } from "lucide-react";
 import ResultSheet  from "./ResultSheet";
+import { getCommunityProduct, saveCommunityProduct } from "@/lib/supabase";
 import FamilyProfiles from "./FamilyProfiles";
 import ScanHistory  from "./ScanHistory";
 import { checkDrugInteractions } from "@/lib/drugInteractions";
@@ -70,20 +71,28 @@ export default function AppShell() {
       let cached  = await getCachedProduct(barcode);
       let product = cached?.data ?? null;
 
-      // 2. Fetch if needed
+      // 2. Fetch if needed (Check Supabase FIRST, then Open Food Facts)
       if (!product) {
-        const fetched = await fetchByBarcode(barcode);
-        if (fetched?.found) {
-          await cacheProduct(barcode, fetched);
-          product = fetched;
+        const communityMatch = await getCommunityProduct(barcode);
+        
+        if (communityMatch && communityMatch.ingredients_text) {
+          // Found in our own database!
+          product = { name: communityMatch.name, brand: "Community", ingredients: communityMatch.ingredients_text };
+        } else {
+          // Fallback to global database
+          const fetched = await fetchByBarcode(barcode);
+          if (fetched?.found) {
+            await cacheProduct(barcode, fetched);
+            product = fetched;
+          }
         }
       }
-
+      
       const ingredients = product?.ingredients ?? "";
 
       // 3. Phase 3 AI — live LLM analysis
       const profileForAnalysis = activeProfile
-        ? { allergies: activeProfile.allergies, conditions: activeProfile.conditions }
+        ? { allergies: activeProfile.allergies, conditions: activeProfile.conditions, aboutMe: activeProfile.aboutMe }
         : undefined;
         
       const aiResponse = await fetch("/api/analyze", {
@@ -210,11 +219,12 @@ export default function AppShell() {
         {/* OCR */}
         {mode === "ocr" && (
           <OCRInput
+            isAnalyzing={loading}
             onResult={async (text) => {
               setLoading(true);
               try {
                 const profileForAnalysis = activeProfile
-                  ? { allergies: activeProfile.allergies, conditions: activeProfile.conditions }
+                  ? { allergies: activeProfile.allergies, conditions: activeProfile.conditions, aboutMe: activeProfile.aboutMe }
                   : undefined;
                   
                 const aiResponse = await fetch("/api/analyze", {
@@ -229,6 +239,11 @@ export default function AppShell() {
                   setLoading(false);
                   return;
                 }
+                
+                // --- NEW ADDITION: The Community Moat Sync ---
+                // Silently back up the raw text to your database so the next user doesn't have to wait for OCR
+                await saveCommunityProduct(`manual-ocr-${Date.now()}`, text);
+                // ---------------------------------------------
                 
                 const drugAlerts = checkDrugInteractions(activeProfile?.medications ?? [], text);
                 
@@ -338,9 +353,32 @@ function NAFDACInput() {
 }
 
 // ─── OCR Input ───────────────────────────────────────────────
-function OCRInput({ onResult }: { onResult: (text: string) => void }) {
+function OCRInput({ onResult, isAnalyzing }: { onResult: (text: string) => void, isAnalyzing?: boolean }) {
   const [pct, setPct]   = useState(0);
   const [busy, setBusy] = useState(false);
+  const [manualMode, setManualMode] = useState(false);
+  const [manualText, setManualText] = useState("");
+
+  // 1. The new AI Thinking Screen! 
+  // If the backend is fetching, block the screen with this beautiful loader.
+  if (isAnalyzing) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full gap-4 px-8">
+        <div className="relative flex items-center justify-center w-16 h-16 mb-2">
+          {/* Outer pulsing ring */}
+          <div className="absolute inset-0 border-4 border-[#10B981]/20 rounded-full animate-ping" />
+          {/* Inner spinning ring */}
+          <div className="absolute inset-0 border-4 border-[#10B981] border-t-transparent rounded-full animate-spin" />
+          {/* Center icon */}
+          <span className="text-xl">✨</span>
+        </div>
+        <p className="text-[#10B981] font-semibold text-lg animate-pulse">AI is thinking...</p>
+        <p className="text-gray-500 text-xs text-center">
+          Cross-referencing ingredients with your health profile
+        </p>
+      </div>
+    );
+  }
 
   async function scan(file: File) {
     setBusy(true); setPct(0);
@@ -356,6 +394,32 @@ function OCRInput({ onResult }: { onResult: (text: string) => void }) {
     finally { setBusy(false); }
   }
 
+  if (manualMode) {
+    return (
+      <div className="flex flex-col h-full gap-4 px-4 pt-4 pb-6">
+        <div className="flex justify-between items-center">
+          <p className="text-gray-400 text-sm font-medium uppercase tracking-wide">Manual Entry</p>
+          <button onClick={() => setManualMode(false)} className="text-gray-500 text-sm hover:text-white">
+            Cancel
+          </button>
+        </div>
+        <textarea
+          className="flex-1 w-full bg-[#1A2235] border border-white/10 rounded-xl p-4 text-sm text-white placeholder-gray-600 outline-none focus:border-[#10B981] resize-none"
+          placeholder="e.g. Malt extract, Sugar, Skim Milk Powder..."
+          value={manualText}
+          onChange={(e) => setManualText(e.target.value)}
+        />
+        <button
+          onClick={() => { if (manualText.trim()) onResult(manualText); }}
+          disabled={!manualText.trim()}
+          className="w-full bg-[#10B981] text-white py-3 rounded-xl text-sm font-semibold disabled:opacity-40"
+        >
+          Analyze Ingredients
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col items-center justify-center h-full gap-5 px-8">
       <p className="text-gray-500 text-sm text-center leading-relaxed">
@@ -369,11 +433,19 @@ function OCRInput({ onResult }: { onResult: (text: string) => void }) {
           </div>
         </div>
       ) : (
-        <label className="bg-[#10B981] text-white px-8 py-3 rounded-xl text-sm font-semibold cursor-pointer active:opacity-80">
-          Take Photo of Label
-          <input type="file" accept="image/*" capture="environment" className="hidden"
-            onChange={e => e.target.files?.[0] && scan(e.target.files[0])} />
-        </label>
+        <div className="flex flex-col gap-3 w-full max-w-xs">
+          <label className="bg-[#10B981] text-white w-full text-center py-3 rounded-xl text-sm font-semibold cursor-pointer active:opacity-80">
+            Take Photo of Label
+            <input type="file" accept="image/*" capture="environment" className="hidden"
+              onChange={e => e.target.files?.[0] && scan(e.target.files[0])} />
+          </label>
+          <button
+            onClick={() => setManualMode(true)}
+            className="bg-transparent border border-white/10 text-gray-400 w-full py-3 rounded-xl text-sm font-semibold active:bg-white/5 transition-colors"
+          >
+            Type Manually Instead
+          </button>
+        </div>
       )}
     </div>
   );

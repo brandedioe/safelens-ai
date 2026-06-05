@@ -11,6 +11,7 @@ export interface FamilyProfile {
   allergies:  string[];
   medications: string[];
   conditions: string[];
+  aboutMe?: string;
   isActive:   boolean;
   createdAt:  number;
 }

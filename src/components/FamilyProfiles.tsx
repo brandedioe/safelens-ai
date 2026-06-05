@@ -24,7 +24,7 @@ const TYPE_COLORS: Record<string, string> = {
 
 const EMPTY_FORM = {
   name: "", type: "self" as FamilyProfile["type"],
-  allergies: "", medications: "", conditions: "",
+  allergies: "", medications: "", conditions: "", aboutMe: "",
 };
 
 interface Props { onProfileChange: (p: FamilyProfile | null) => void; }
@@ -62,6 +62,7 @@ export default function FamilyProfiles({ onProfileChange }: Props) {
       allergies:   p.allergies.join(", "),
       medications: p.medications.join(", "),
       conditions:  p.conditions.join(", "),
+      aboutMe:     p.aboutMe || "",
     });
     setEditId(p.id);
     setShowForm(true);
@@ -78,6 +79,7 @@ export default function FamilyProfiles({ onProfileChange }: Props) {
       allergies:   split(form.allergies),
       medications: split(form.medications),
       conditions:  split(form.conditions),
+      aboutMe:     form.aboutMe.trim(),
       isActive:    existing?.isActive ?? profiles.length === 0,
       createdAt:   existing?.createdAt ?? Date.now(),
     };
@@ -182,12 +184,27 @@ export default function FamilyProfiles({ onProfileChange }: Props) {
           />
 
           {/* Conditions */}
+          {/* Conditions */}
           <input
             value={form.conditions}
             onChange={e => setForm(f => ({ ...f, conditions: e.target.value }))}
             placeholder="Conditions (e.g. Diabetes, Hypertension)"
             className="w-full bg-[#0D1220] border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder-gray-600 outline-none focus:border-[#8B5CF6] mb-4"
           />
+
+          {/* NEW: Health Goals (About Me) */}
+          <p className="text-gray-400 text-xs mb-2 uppercase tracking-wide font-medium">Health Goals (About Me)</p>
+          <textarea
+            value={form.aboutMe}
+            onChange={e => setForm(f => ({ ...f, aboutMe: e.target.value }))}
+            placeholder="E.g., I weigh 150kg and am trying to lose weight. Highly sensitive to caffeine."
+            rows={3}
+            maxLength={300}
+            className="w-full bg-[#0D1220] border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder-gray-600 outline-none focus:border-[#10B981] mb-1 resize-none"
+          />
+          <p className="text-xs text-gray-500 mb-4 text-right">
+            {form.aboutMe.length}/300
+          </p>
 
           <button
             onClick={save}
