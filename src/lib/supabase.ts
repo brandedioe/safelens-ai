@@ -1,30 +1,51 @@
 // src/lib/supabase.ts
+// Supabase is optional — app works without it (community features disabled).
+// Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in .env.local
+
 import { createClient } from "@supabase/supabase-js";
 
-export const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-// Example function: submit a community report
-export async function submitReport(report: {
+export const supabase =
+  url && key ? createClient(url, key) : null;
+
+// ── Community report ─────────────────────────────────────────
+export async function submitReport(data: {
   product_barcode: string;
-  product_name: string;
-  description: string;
-  market_name?: string;
-  city?: string;
-  latitude?: number;
-  longitude?: number;
+  product_name:    string;
+  description:     string;
+  market_name?:    string;
+  city?:           string;
+  lat?:            number;
+  lng?:            number;
 }) {
-  const location = report.latitude
-    ? `POINT(${report.longitude} ${report.latitude})`
-    : null;
+  if (!supabase) return { error: "Supabase not configured in .env.local" };
 
   const { error } = await supabase.from("community_reports").insert({
-    ...report,
-    location,
-    status: "pending",
+    product_barcode: data.product_barcode,
+    product_name:    data.product_name,
+    description:     data.description,
+    market_name:     data.market_name ?? "",
+    city:            data.city ?? "Lagos",
+    status:          "pending",
+    ...(data.lat != null && data.lng != null
+      ? { location: `POINT(${data.lng} ${data.lat})` }
+      : {}),
   });
 
-  if (error) throw error;
+  return { error };
+}
+
+// ── User profile (Supabase) ──────────────────────────────────
+export async function upsertProfile(profile: {
+  id:                string;
+  display_name?:     string;
+  allergies?:        string[];
+  medications?:      string[];
+  health_conditions?: string[];
+}) {
+  if (!supabase) return { error: "Supabase not configured" };
+  const { error } = await supabase.from("user_profiles").upsert(profile);
+  return { error };
 }

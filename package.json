@@ -12,19 +12,21 @@
     "@ducanh2912/next-pwa": "^10.2.9",
     "@supabase/supabase-js": "^2.106.2",
     "html5-qrcode": "^2.3.8",
+    "idb": "^8.0.3",
     "lucide-react": "^1.17.0",
     "next": "16.2.6",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "tesseract.js": "^7.0.0"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4",
+    "@tailwindcss/postcss": "^4.3.0",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
-    "tailwindcss": "^4",
+    "tailwindcss": "^4.3.0",
     "typescript": "^5"
   }
 }

@@ -1,6 +1,43 @@
 @import "tailwindcss";
 
-body {
-  background-color: #07090F;
-  color: #EEF2FF;
+/* ── SafeLens design tokens ───────────────────────────── */
+:root {
+  --safe:  #10B981;
+  --warn:  #F59E0B;
+  --dng:   #EF4444;
+  --inf:   #4F90F0;
+  --bg:    #07090F;
+  --bg1:   #0D1220;
+  --bg2:   #131928;
 }
+
+/* ── Base ────────────────────────────────────────────── */
+html, body { height: 100%; }
+
+body {
+  background-color: var(--bg);
+  color: #EEF2FF;
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+/* dvh helper (Tailwind v4 has h-dvh built-in, this is a fallback) */
+.app-height { height: 100dvh; }
+
+/* iOS safe-area padding */
+.pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
+.pt-safe { padding-top:    env(safe-area-inset-top,    0px); }
+
+/* ── html5-qrcode overrides ──────────────────────────── */
+/* Strip the default UI chrome — we supply our own */
+#sl-camera { border: none !important; padding: 0 !important; }
+#sl-camera video {
+  width: 100%   !important;
+  height: 100%  !important;
+  object-fit: cover !important;
+}
+/* Hide the info icon html5-qrcode injects */
+#sl-camera img[alt="Info icon"]  { display: none !important; }
+#sl-camera div[style*="display: flex"] > img { display: none !important; }
