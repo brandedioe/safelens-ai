@@ -4,7 +4,6 @@ import { Zap, Users, Clock, Camera, AlertCircle } from "lucide-react";
 import ResultSheet  from "./ResultSheet";
 import FamilyProfiles from "./FamilyProfiles";
 import ScanHistory  from "./ScanHistory";
-import { analyzeIngredients } from "@/data/ingredients";
 import { checkDrugInteractions } from "@/lib/drugInteractions";
 import { fetchByBarcode }        from "@/lib/openFoodFacts";
 import {
@@ -82,11 +81,16 @@ export default function AppShell() {
 
       const ingredients = product?.ingredients ?? "";
 
-      // 3. Phase 1 AI — ingredient analysis with active profile allergies
+      // 3. Phase 3 AI — live LLM analysis
       const profileForAnalysis = activeProfile
-        ? { allergies: activeProfile.allergies, medications: activeProfile.medications }
+        ? { allergies: activeProfile.allergies, conditions: activeProfile.conditions }
         : undefined;
-      const analysis = analyzeIngredients(ingredients, profileForAnalysis);
+        
+      const aiResponse = await fetch("/api/analyze", {
+        method: "POST",
+        body: JSON.stringify({ text: ingredients, profile: profileForAnalysis }),
+      });
+      const analysis = await aiResponse.json();
 
       // 4. Phase 2 — drug interaction check against active profile medications
       const drugAlerts = checkDrugInteractions(
@@ -206,17 +210,31 @@ export default function AppShell() {
         {/* OCR */}
         {mode === "ocr" && (
           <OCRInput
-            onResult={(text) => {
-              const profileForAnalysis = activeProfile
-                ? { allergies: activeProfile.allergies, medications: activeProfile.medications }
-                : undefined;
-              const analysis   = analyzeIngredients(text, profileForAnalysis);
-              const drugAlerts = checkDrugInteractions(activeProfile?.medications ?? [], text);
-              setResult({
-                barcode: "ocr-scan",
-                product: { name: "Label Scan", brand: "OCR", ingredients: text },
-                analysis, drugAlerts, ts: Date.now(),
-              });
+            onResult={async (text) => {
+              setLoading(true);
+              try {
+                const profileForAnalysis = activeProfile
+                  ? { allergies: activeProfile.allergies, conditions: activeProfile.conditions }
+                  : undefined;
+                  
+                const aiResponse = await fetch("/api/analyze", {
+                  method: "POST",
+                  body: JSON.stringify({ text, profile: profileForAnalysis }),
+                });
+                const analysis = await aiResponse.json();
+                
+                const drugAlerts = checkDrugInteractions(activeProfile?.medications ?? [], text);
+                
+                setResult({
+                  barcode: "ocr-scan",
+                  product: { name: "Label Scan", brand: "OCR", ingredients: text },
+                  analysis, drugAlerts, ts: Date.now(),
+                });
+              } catch (e) {
+                console.error("AI OCR Error:", e);
+              } finally {
+                setLoading(false);
+              }
             }}
           />
         )}
