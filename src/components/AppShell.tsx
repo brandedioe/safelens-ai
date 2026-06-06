@@ -450,7 +450,7 @@ function OCRInput({
           <div className="absolute inset-0 border-4 border-[#10B981] border-t-transparent rounded-full animate-spin" />
           <span className="text-xl">✨</span>
         </div>
-        <p className="text-[#10B981] font-semibold text-lg animate-pulse">AI is thinking…</p>
+        <p className="text-[#10B981] font-semibold text-lg animate-pulse">SafeLens is analyzing…</p>
         <p className="text-gray-500 text-xs text-center">
           Cross-referencing ingredients with your health profile
         </p>

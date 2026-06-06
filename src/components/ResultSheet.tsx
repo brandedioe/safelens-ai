@@ -165,8 +165,8 @@ export default function ResultSheet({ result, onClose }: Props) {
           )}
 
           {/* AI badge */}
-          <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg bg-purple-50 text-purple-700 border border-purple-100">
-            <Sparkles size={11} /> Gemini AI
+          <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">            
+            <Sparkles size={11} /> SafeLens Engine
           </span>
         </div>
 
@@ -241,7 +241,7 @@ export default function ResultSheet({ result, onClose }: Props) {
               <Sparkles size={11} /> No dangerous additives detected
             </p>
             <p className="text-xs text-green-600 mt-0.5 leading-relaxed">
-              Gemini AI found no flagged ingredients in this product based on current safety databases.
+              SafeLens found no flagged ingredients in this product based on current safety databases.
             </p>
           </div>
         )}

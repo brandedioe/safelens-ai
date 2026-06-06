@@ -74,7 +74,10 @@ export async function POST(request: Request) {
     // ── Attempt 1: Gemini 2.5 Flash Lite ────────────────────
     if (process.env.GEMINI_API_KEY) {
       try {
-        const model  = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
+        const model = genAI.getGenerativeModel({ 
+        model: "gemini-2.5-flash-lite",
+        generationConfig: { temperature: 0 } // Locks down the AI to be 100% deterministic
+      });
         const result = await withTimeout(model.generateContent(prompt), 22000, "Gemini 2.5 Flash Lite");
         aiText   = result.response.text().trim();
         aiSource = "gemini-2.5-flash-lite";
@@ -84,7 +87,7 @@ export async function POST(request: Request) {
 
         // ── Attempt 2: Gemini 1.5 Flash (stable) ──────────
         try {
-          const model2  = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+          const model2  = genAI.getGenerativeModel({ model: "gemini-1.5-flash", generationConfig: { temperature: 0 } });
           const result2 = await withTimeout(model2.generateContent(prompt), 18000, "Gemini 1.5 Flash");
           aiText   = result2.response.text().trim();
           aiSource = "gemini-1.5-flash";
@@ -109,6 +112,7 @@ export async function POST(request: Request) {
           },
           body:   JSON.stringify({
             model:    "meta-llama/llama-3.1-8b-instruct:free",
+            temperature: 0,
             messages: [
               { role: "system", content: "You are a strict JSON-only API. Return raw valid JSON only. No markdown, no backticks." },
               { role: "user",   content: prompt },
