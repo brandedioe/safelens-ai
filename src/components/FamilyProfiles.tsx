@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import { Plus, Check, Trash2, ChevronDown, ChevronUp, X } from "lucide-react";
+import { Plus, Check, Trash2, X, ChevronRight } from "lucide-react";
 import {
   FamilyProfile,
   getFamilyProfiles,
@@ -11,29 +11,31 @@ import {
 
 const TYPES: { key: FamilyProfile["type"]; label: string; emoji: string; hint: string }[] = [
   { key: "self",     label: "Self",           emoji: "👤", hint: "Your own profile" },
-  { key: "child",    label: "Child",          emoji: "👶", hint: "Under 18 — stricter limits" },
-  { key: "elderly",  label: "Elderly Parent", emoji: "👴", hint: "65+ — medication checks" },
+  { key: "child",    label: "Child",          emoji: "👶", hint: "Under 18 - stricter limits" },
+  { key: "elderly",  label: "Elderly Parent", emoji: "👴", hint: "65+ with medications" },
   { key: "pregnant", label: "Pregnant",       emoji: "🤰", hint: "Extra additive caution" },
   { key: "custom",   label: "Other",          emoji: "👥", hint: "Custom profile" },
 ];
 
-const TYPE_COLORS: Record<string, string> = {
+const TYPE_COLOR: Record<string, string> = {
   self: "#10B981", child: "#4F90F0", elderly: "#8B5CF6",
   pregnant: "#F59E0B", custom: "#6B7280",
 };
 
-const EMPTY_FORM = {
+const EMPTY = {
   name: "", type: "self" as FamilyProfile["type"],
   allergies: "", medications: "", conditions: "", aboutMe: "",
 };
 
-interface Props { onProfileChange: (p: FamilyProfile | null) => void; }
-
-export default function FamilyProfiles({ onProfileChange }: Props) {
+export default function FamilyProfiles({
+  onProfileChange,
+}: {
+  onProfileChange: (p: FamilyProfile | null) => void;
+}) {
   const [profiles, setProfiles]   = useState<FamilyProfile[]>([]);
   const [showForm, setShowForm]   = useState(false);
-  const [editId, setEditId]       = useState<string | null>(null);
-  const [form, setForm]           = useState(EMPTY_FORM);
+  const [editId,   setEditId]     = useState<string | null>(null);
+  const [form,     setForm]       = useState(EMPTY);
   const [deleting, setDeleting]   = useState<string | null>(null);
 
   useEffect(() => { load(); }, []);
@@ -42,15 +44,8 @@ export default function FamilyProfiles({ onProfileChange }: Props) {
     setProfiles(await getFamilyProfiles());
   }
 
-  async function activate(id: string) {
-    await setActiveProfile(id);
-    const all = await getFamilyProfiles();
-    setProfiles(all);
-    onProfileChange(all.find(p => p.id === id) ?? null);
-  }
-
   function startAdd() {
-    setForm(EMPTY_FORM);
+    setForm(EMPTY);
     setEditId(null);
     setShowForm(true);
   }
@@ -62,7 +57,7 @@ export default function FamilyProfiles({ onProfileChange }: Props) {
       allergies:   p.allergies.join(", "),
       medications: p.medications.join(", "),
       conditions:  p.conditions.join(", "),
-      aboutMe:     p.aboutMe || "",
+      aboutMe:     p.aboutMe ?? "",
     });
     setEditId(p.id);
     setShowForm(true);
@@ -79,7 +74,7 @@ export default function FamilyProfiles({ onProfileChange }: Props) {
       allergies:   split(form.allergies),
       medications: split(form.medications),
       conditions:  split(form.conditions),
-      aboutMe:     form.aboutMe.trim(),
+      aboutMe:     form.aboutMe.trim() || undefined,
       isActive:    existing?.isActive ?? profiles.length === 0,
       createdAt:   existing?.createdAt ?? Date.now(),
     };
@@ -90,21 +85,28 @@ export default function FamilyProfiles({ onProfileChange }: Props) {
     if (profile.isActive) onProfileChange(profile);
   }
 
+  async function activate(id: string) {
+    await setActiveProfile(id);
+    const all = await getFamilyProfiles();
+    setProfiles(all);
+    onProfileChange(all.find(p => p.id === id) ?? null);
+  }
+
   async function remove(id: string) {
     await deleteFamilyProfile(id);
     setDeleting(null);
     await load();
   }
 
-  const typeInfo = (key: string) => TYPES.find(t => t.key === key) ?? TYPES[0];
+  const typeInfo = (k: string) => TYPES.find(t => t.key === k) ?? TYPES[0];
 
   return (
-    <div className="h-full overflow-y-auto pb-6">
+    <div className="pb-8">
       {/* Header */}
       <div className="flex items-center justify-between px-1 mb-4">
         <div>
           <p className="text-white font-semibold text-sm">Family Profiles</p>
-          <p className="text-gray-500 text-xs mt-0.5">Active profile shapes every scan result</p>
+          <p className="text-gray-500 text-xs mt-0.5">Active profile shapes every AI scan result</p>
         </div>
         <button
           onClick={startAdd}
@@ -116,10 +118,11 @@ export default function FamilyProfiles({ onProfileChange }: Props) {
 
       {/* Empty state */}
       {profiles.length === 0 && !showForm && (
-        <div className="flex flex-col items-center justify-center py-12 gap-3">
-          <span className="text-4xl">👥</span>
-          <p className="text-gray-400 text-sm text-center px-6">
-            Add a profile to personalise allergy alerts and drug interaction checks for each family member
+        <div className="flex flex-col items-center justify-center py-16 gap-3 px-6 text-center">
+          <span className="text-5xl">👥</span>
+          <p className="text-gray-400 text-sm leading-relaxed">
+            Add a profile so SafeLens can personalise allergy alerts, drug interaction checks,
+            and AI analysis for each family member.
           </p>
           <button
             onClick={startAdd}
@@ -134,8 +137,10 @@ export default function FamilyProfiles({ onProfileChange }: Props) {
       {showForm && (
         <div className="bg-[#1A2235] border border-white/10 rounded-2xl p-4 mb-4">
           <div className="flex items-center justify-between mb-4">
-            <p className="text-white text-sm font-semibold">{editId ? "Edit Profile" : "New Profile"}</p>
-            <button onClick={() => setShowForm(false)} className="text-gray-500">
+            <p className="text-white text-sm font-semibold">
+              {editId ? "Edit Profile" : "New Profile"}
+            </p>
+            <button onClick={() => setShowForm(false)} className="text-gray-500 p-1">
               <X size={16} />
             </button>
           </div>
@@ -149,7 +154,7 @@ export default function FamilyProfiles({ onProfileChange }: Props) {
           />
 
           {/* Type selector */}
-          <p className="text-gray-400 text-xs mb-2 uppercase tracking-wide font-medium">Profile type</p>
+          <p className="text-gray-400 text-xs uppercase tracking-wide font-medium mb-2">Profile type</p>
           <div className="grid grid-cols-5 gap-1.5 mb-3">
             {TYPES.map(t => (
               <button
@@ -157,12 +162,13 @@ export default function FamilyProfiles({ onProfileChange }: Props) {
                 onClick={() => setForm(f => ({ ...f, type: t.key }))}
                 className="flex flex-col items-center gap-1 p-2 rounded-xl border transition-all"
                 style={{
-                  borderColor: form.type === t.key ? TYPE_COLORS[t.key] : "rgba(255,255,255,0.08)",
-                  background:  form.type === t.key ? TYPE_COLORS[t.key] + "22" : "transparent",
+                  borderColor: form.type === t.key ? TYPE_COLOR[t.key] : "rgba(255,255,255,0.08)",
+                  background:  form.type === t.key ? TYPE_COLOR[t.key] + "22" : "transparent",
                 }}
+                title={t.hint}
               >
                 <span className="text-lg leading-none">{t.emoji}</span>
-                <span className="text-[9px] text-gray-400 leading-tight text-center">{t.label}</span>
+                <span className="text-[9px] text-gray-400 text-center leading-tight">{t.label}</span>
               </button>
             ))}
           </div>
@@ -172,7 +178,7 @@ export default function FamilyProfiles({ onProfileChange }: Props) {
             value={form.allergies}
             onChange={e => setForm(f => ({ ...f, allergies: e.target.value }))}
             placeholder="Allergies (e.g. Peanuts, Shellfish, Lactose)"
-            className="w-full bg-[#0D1220] border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder-gray-600 outline-none focus:border-[#F59E0B] mb-2"
+            className="w-full bg-[#0D1220] border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder-gray-600 outline-none focus:border-red-400 mb-2"
           />
 
           {/* Medications */}
@@ -180,31 +186,25 @@ export default function FamilyProfiles({ onProfileChange }: Props) {
             value={form.medications}
             onChange={e => setForm(f => ({ ...f, medications: e.target.value }))}
             placeholder="Medications (e.g. Metformin, Atorvastatin)"
-            className="w-full bg-[#0D1220] border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder-gray-600 outline-none focus:border-[#4F90F0] mb-2"
+            className="w-full bg-[#0D1220] border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder-gray-600 outline-none focus:border-blue-400 mb-2"
           />
 
-          {/* Conditions */}
           {/* Conditions */}
           <input
             value={form.conditions}
             onChange={e => setForm(f => ({ ...f, conditions: e.target.value }))}
-            placeholder="Conditions (e.g. Diabetes, Hypertension)"
-            className="w-full bg-[#0D1220] border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder-gray-600 outline-none focus:border-[#8B5CF6] mb-4"
+            placeholder="Conditions (e.g. Diabetes, Hypertension, Kidney disease)"
+            className="w-full bg-[#0D1220] border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder-gray-600 outline-none focus:border-purple-400 mb-2"
           />
 
-          {/* NEW: Health Goals (About Me) */}
-          <p className="text-gray-400 text-xs mb-2 uppercase tracking-wide font-medium">Health Goals (About Me)</p>
+          {/* Health goals / about me — fed directly to the AI */}
           <textarea
             value={form.aboutMe}
             onChange={e => setForm(f => ({ ...f, aboutMe: e.target.value }))}
-            placeholder="E.g., I weigh 150kg and am trying to lose weight. Highly sensitive to caffeine."
+            placeholder="Health goals (e.g. losing weight, managing blood sugar, building muscle). The AI uses this to personalise every scan result."
             rows={3}
-            maxLength={300}
-            className="w-full bg-[#0D1220] border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder-gray-600 outline-none focus:border-[#10B981] mb-1 resize-none"
+            className="w-full bg-[#0D1220] border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder-gray-600 outline-none focus:border-[#10B981] mb-4 resize-none"
           />
-          <p className="text-xs text-gray-500 mb-4 text-right">
-            {form.aboutMe.length}/300
-          </p>
 
           <button
             onClick={save}
@@ -219,15 +219,17 @@ export default function FamilyProfiles({ onProfileChange }: Props) {
       {/* Profile list */}
       <div className="flex flex-col gap-3">
         {profiles.map(p => {
-          const ti   = typeInfo(p.type);
-          const col  = TYPE_COLORS[p.type];
+          const ti    = typeInfo(p.type);
+          const col   = TYPE_COLOR[p.type] ?? "#6B7280";
           const isDel = deleting === p.id;
+
           return (
             <div
               key={p.id}
               className="bg-[#1A2235] border rounded-2xl p-4 transition-all"
               style={{ borderColor: p.isActive ? col : "rgba(255,255,255,0.07)" }}
             >
+              {/* Top row */}
               <div className="flex items-center gap-3">
                 {/* Avatar */}
                 <div
@@ -257,19 +259,32 @@ export default function FamilyProfiles({ onProfileChange }: Props) {
                   {/* Tags */}
                   <div className="flex flex-wrap gap-1 mt-1.5">
                     {p.allergies.map(a => (
-                      <span key={a} className="text-[10px] bg-red-900/40 text-red-300 px-1.5 py-0.5 rounded-full">{a}</span>
+                      <span key={a} className="text-[10px] bg-red-900/40 text-red-300 px-1.5 py-0.5 rounded-full">
+                        {a}
+                      </span>
                     ))}
                     {p.medications.map(m => (
-                      <span key={m} className="text-[10px] bg-blue-900/40 text-blue-300 px-1.5 py-0.5 rounded-full">{m}</span>
+                      <span key={m} className="text-[10px] bg-blue-900/40 text-blue-300 px-1.5 py-0.5 rounded-full">
+                        {m}
+                      </span>
                     ))}
                     {p.conditions.map(c => (
-                      <span key={c} className="text-[10px] bg-purple-900/40 text-purple-300 px-1.5 py-0.5 rounded-full">{c}</span>
+                      <span key={c} className="text-[10px] bg-purple-900/40 text-purple-300 px-1.5 py-0.5 rounded-full">
+                        {c}
+                      </span>
                     ))}
                   </div>
+
+                  {/* Health goals preview */}
+                  {p.aboutMe && (
+                    <p className="text-[10px] text-[#10B981]/70 mt-1 truncate">
+                      Goals: {p.aboutMe}
+                    </p>
+                  )}
                 </div>
               </div>
 
-              {/* Actions */}
+              {/* Action row */}
               <div className="flex gap-2 mt-3">
                 {!p.isActive && (
                   <button
@@ -296,7 +311,7 @@ export default function FamilyProfiles({ onProfileChange }: Props) {
                 ) : (
                   <button
                     onClick={() => setDeleting(p.id)}
-                    className="p-2 rounded-xl text-gray-600 bg-white/5"
+                    className="p-2 rounded-xl text-gray-600 bg-white/5 hover:text-red-400 transition-colors"
                   >
                     <Trash2 size={14} />
                   </button>

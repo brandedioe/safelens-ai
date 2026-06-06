@@ -1,9 +1,18 @@
 // src/lib/openFoodFacts.ts
 // Fetches product data by barcode.
-// Uses the Railway backend proxy when available (Redis cached, faster).
-// Falls back to querying Open Food Facts directly from the browser.
+// Uses the Railway backend proxy when NEXT_PUBLIC_NAFDAC_API_URL is set
+// AND points to a non-localhost address. Falls back to Open Food Facts directly.
 
-const BACKEND = process.env.NEXT_PUBLIC_NAFDAC_API_URL;
+const rawBackend = process.env.NEXT_PUBLIC_NAFDAC_API_URL ?? "";
+
+// Never use localhost/127.0.0.1 as the backend in production —
+// Vercel serverless functions cannot reach your local machine.
+const BACKEND =
+  rawBackend &&
+  !rawBackend.includes("127.0.0.1") &&
+  !rawBackend.includes("localhost")
+    ? rawBackend
+    : null;
 
 export interface ProductData {
   found:       boolean;
@@ -20,13 +29,15 @@ const EMPTY: ProductData = {
 
 export async function fetchByBarcode(barcode: string): Promise<ProductData> {
   try {
-    // Prefer backend proxy (has Redis caching = faster on repeat scans)
     const url = BACKEND
       ? `${BACKEND}/product/barcode/${barcode}`
       : `https://world.openfoodfacts.org/api/v2/product/${barcode}` +
         `?fields=product_name,brands,ingredients_text,allergens_tags,image_url`;
 
     const res  = await fetch(url, { signal: AbortSignal.timeout(12000) });
+
+    if (!res.ok) return EMPTY;
+
     const data = await res.json();
 
     if (!data || data.status !== 1) return EMPTY;
